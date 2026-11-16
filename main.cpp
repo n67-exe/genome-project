@@ -12,6 +12,15 @@ int main(int argc, char *argv[])
 	try {
 		ReadsParser parser(reads_path, 22'720'100);
 		cout << parser.count_reads() << endl;
+
+		vector<string> reads(15);
+
+		parser.get_reads(reads);
+
+		for (auto& read : reads)
+		{
+			cout << read << endl;
+		}
 		// string genome = read_genome(genome_path);
 		// const size_t genome_size = genome.size();
 		// GenomeMapper mapper;

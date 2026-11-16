@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 4.3)
 project(Genome_Project)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 add_executable(Genome_Project main.cpp)
