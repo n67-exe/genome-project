@@ -17,7 +17,7 @@ int main(int argc, char *argv[])
 	const filesystem::path source = source_location::current().file_name();
 	const filesystem::path input_path = argc == 2
 		? filesystem::path(argv[1])
-		: source.parent_path() / "data" / "exact_1.txt";
+		: source.parent_path() / "data" / "wildcards_all_1.txt";
 
 	ifstream input(input_path);
 	if (!input)
@@ -72,6 +72,8 @@ int main(int argc, char *argv[])
 			cerr << "Unknown label at record " << record << ": " << label << '\n';
 			return 1;
 		}
+
+		input.ignore(32768, '\n');
 	}
 
 	if (input.bad() || !input.eof())

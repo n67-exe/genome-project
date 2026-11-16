@@ -1,3 +1,6 @@
+#include <atomic>
+#include <exception>
+#include <omp.h>
 #include <source_location>
 
 #include "main.hpp"
@@ -8,53 +11,119 @@ int main(int argc, char *argv[])
 
 	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
 	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
-	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_1.txt";
+	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_2";
 
 	try
 	{
-		ofstream out(output_path);
-
 		GenomeMapper mapper(read_genome(genome_path));
 
 		cout << "Preprocessing done" << endl;
-
-		vector<string> reads(1024);
-		vector<int> indices;
-
-		indices.reserve(16);
 
 		ReadsParser parser(reads_path, 22'720'100);
 
 		cout << "Indexing done" << endl;
 
-		cout << string((parser.count_reads() - 1) / (1024 * 500) + 1, '_') << endl;
+		constexpr int thread_count = 8;
+		constexpr size_t batch_size = 1024;
+		constexpr size_t report_interval = batch_size * 500;
 
-		for (size_t offset = 0; reads.size(); offset += reads.size())
+		const size_t read_count = parser.count_reads();
+
+		cout << string(read_count == 0 ? 0 : (read_count - 1) / report_interval + 1, '_') << endl;
+
+		filesystem::create_directories(output_path);
+
+		atomic<bool> failed = false;
+		exception_ptr failure;
+		omp_set_dynamic(0);
+
+		#pragma omp parallel num_threads(thread_count) firstprivate(mapper, parser, read_count) shared(cout, output_path, failed, failure) default(none)
 		{
-			if (offset % (1024 * 500) == 0)
-				cout << '#' << flush;
+			vector<string> reads;
+			vector<int> indices;
 
-			parser.get_reads(reads, offset);
+			ofstream out;
 
-			for (auto &read : reads)
+			try
 			{
-				mapper.map_read(read, indices);
+				reads.resize(batch_size);
+				indices.reserve(32);
 
-				if (indices.size() == 0)
-					out << "missing\n";
-				else if (indices.size() == 1)
-					out << "single " << indices.front() << "\n";
-				else
+				const filesystem::path path = output_path / (to_string(omp_get_thread_num()) + ".txt");
+
+				out.open(path);
+
+				if (!out)
+					throw runtime_error("Could not open output file: " + path.string());
+
+				out.exceptions(ios::badbit | ios::failbit);
+			}
+			catch (...)
+			{
+				#pragma omp critical(init_error)
 				{
-					out << "multiple " << indices.size();
+					if (!failure)
+						failure = current_exception();
+				}
+				failed.store(true);
+			}
 
-					for (int ind : indices)
-						out << " " << ind;
+			#pragma omp barrier
 
-					out << "\n";
+			#pragma omp for schedule(dynamic, 1)
+			for (size_t offset = 0; offset < read_count; offset += batch_size)
+			{
+				if (failed.load())
+					continue;
+
+				try
+				{
+					parser.get_reads(reads, offset);
+
+					if (offset % report_interval == 0)
+					{
+						#pragma omp critical(progress)
+						cout << '#' << flush;
+					}
+
+					for (size_t i = 0; i < reads.size(); ++i)
+					{
+						mapper.map_read(reads[i], indices);
+
+						// Use read numbers to reconstruct the original output order
+						out << offset + i << ' ';
+
+						if (indices.empty())
+							out << "missing\n";
+						else if (indices.size() == 1)
+							out << "single " << indices.front() << '\n';
+						else
+						{
+							out << "multiple " << indices.size();
+
+							for (int ind : indices)
+								out << ' ' << ind;
+
+							out << '\n';
+						}
+					}
+				}
+				catch (...)
+				{
+					#pragma omp critical(mapping_error)
+					{
+						if (!failure)
+							failure = current_exception();
+					}
+					failed.store(true);
 				}
 			}
 		}
+
+		if (failure)
+			rethrow_exception(failure);
+
+		cout << endl;
 	}
 	catch (const exception &error)
 	{
