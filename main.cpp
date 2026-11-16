@@ -8,7 +8,7 @@ int main(int argc, char *argv[])
 
 	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
 	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
-	const filesystem::path output_path = current.parent_path() / "data" / "exact_all_1.txt";
+	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_1.txt";
 
 	try
 	{
@@ -29,9 +29,6 @@ int main(int argc, char *argv[])
 
 		cout << string((parser.count_reads() - 1) / (1024 * 500) + 1, '_') << endl;
 
-		size_t count = 0, cmin = 999, cmax = 0;
-		size_t with = 0, without = 0;
-
 		for (size_t offset = 0; reads.size(); offset += reads.size())
 		{
 			if (offset % (1024 * 500) == 0)
@@ -41,12 +38,6 @@ int main(int argc, char *argv[])
 
 			for (auto &read : reads)
 			{
-				if (read.contains('N'))
-				{
-					out << "skipped\n";
-					continue;
-				}
-
 				mapper.map_read(read, indices);
 
 				if (indices.size() == 0)

@@ -85,32 +85,71 @@ public:
 	{
 		out_indices.clear();
 
-		if (read.contains('N'))
-			return;
-
 		// [first, second)
-		auto extend = [this](pair<int, int>& range, char c)
+		auto extend = [this](pair<int, int> range, char c) -> pair<int, int>
 		{
-			range.first = smaller[id(c)] + occurrences[id(c)][range.first];
-			range.second = smaller[id(c)] + occurrences[id(c)][range.second];
+			pair<int, int> out;
+
+			out.first = smaller[id(c)] + occurrences[id(c)][range.first];
+			out.second = smaller[id(c)] + occurrences[id(c)][range.second];
+
+			return out;
 		};
 
-		pair<int, int> range = { 0, (int)bwt.size() };
+		vector<pair<int, int>> curr = {{ 0, (int)bwt.size() }}, next;
+
+		auto extend_wildcard = [&extend, &next](pair<int, int> range)
+		{
+			for (int i = 1; i < size(orig); ++i)
+			{
+				auto extended = extend(range, orig[i]);
+
+				if (extended.first >= extended.second)
+					continue;
+
+				next.push_back(extended);
+			}
+		};
 
 		for (int j = (int)read.size() - 1; j >= 0; --j)
 		{
-			extend(range, read[j]);
+			next.clear();
 
-			if (range.first >= range.second)
+			if (read[j] == 'N')
+				for (auto& range : curr)
+					extend_wildcard(range);
+			else
+				for (auto& range : curr)
+				{
+					auto extended = extend(range, read[j]);
+
+					if (extended.first >= extended.second)
+						continue;
+
+					next.push_back(extended);
+				}
+
+			if (next.empty())
 				return;
+
+			ranges::sort(next);
+
+			curr.clear();
+			curr.push_back(next.front());
+
+			for (int i = 1; i < next.size(); ++i)
+			{
+				if (next[i].first <= curr.back().second)
+					curr.back().second = max(curr.back().second, next[i].second);
+				else
+					curr.push_back(next[i]);
+			}
 		}
 
 		// int pos = inverse_map[range.first];
-
-		for (int i = range.first; i < range.second; ++i)
-		{
-			out_indices.push_back(inverse_map[i]);
-		}
+		for (auto& range : curr)
+			for (int i = range.first; i < range.second; ++i)
+				out_indices.push_back(inverse_map[i]);
 	}
 
 private:
