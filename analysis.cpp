@@ -1,86 +1,117 @@
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <source_location>
+#include <sstream>
 #include <string>
+#include <vector>
 
 using namespace std;
 
 int main(int argc, char *argv[])
 {
-	if (argc > 2)
-	{
-		cerr << "Usage: analysis [mapping-output]\n";
-		return 1;
-	}
-
-	const filesystem::path source = source_location::current().file_name();
-	const filesystem::path input_path = argc == 2
-		? filesystem::path(argv[1])
-		: source.parent_path() / "data" / "wildcards_all_1.txt";
+	const filesystem::path current = source_location::current().file_name();
+	const filesystem::path input_path = current.parent_path() / "data" / "wildcards_all_2.txt";
 
 	ifstream input(input_path);
+
 	if (!input)
 	{
 		cerr << "Could not open mapping output: " << input_path << '\n';
 		return 1;
 	}
 
-	string label;
-	size_t record = 0;
+	size_t line_number = 0;
+	size_t maxm = 0;
 
-	int maxm = 0;
+	string line, label;
 
-	while (input >> label)
+	while (getline(input, line))
 	{
-		++record;
+		++line_number;
+		istringstream row(line);
 
-		if (label == "skipped")
-		{
-			// TODO: Analyze skipped reads.
-		}
-		else if (label == "missing")
-		{
-			// TODO: Analyze missing reads.
-		}
-		else if (label == "single")
-		{
-			int position;
-			if (!(input >> position))
-			{
-				cerr << "Invalid single record at record " << record << '\n';
-				return 1;
-			}
+		long long row_index;
+		int ambiguity;
 
-			// TODO: Analyze reads mapped once, using position.
-		}
-		else if (label == "multiple")
+		if (!(row >> row_index) || row_index < 0)
 		{
-			int count, position;
-			if (!(input >> count >> position))
-			{
-				cerr << "Invalid multiple record at record " << record << '\n';
-				return 1;
-			}
-
-			// TODO: Analyze reads mapped multiple times, using count and position.
-
-			maxm = max(maxm, count);
-		}
-		else
-		{
-			cerr << "Unknown label at record " << record << ": " << label << '\n';
+			cerr << "Invalid row index at line " << line_number << '\n';
 			return 1;
 		}
 
-		input.ignore(32768, '\n');
+		if (!(row >> ambiguity))
+		{
+			cerr << "Invalid ambiguity at line " << line_number << '\n';
+			return 1;
+		}
+
+		if (!(row >> label))
+		{
+			cerr << "Missing label at row " << row_index << '\n';
+			return 1;
+		}
+
+		if (label == "missing")
+		{
+			// TODO: Analyze the read at row_index, which has no mapping.
+		}
+		else if (label == "single")
+		{
+			int index;
+			if (!(row >> index) || index < 0)
+			{
+				cerr << "Invalid single record at row " << row_index << '\n';
+				return 1;
+			}
+
+			// TODO: Analyze the read at row_index mapped to index.
+		}
+		else if (label == "multiple")
+		{
+			int count;
+			if (!(row >> count) || count < 2)
+			{
+				cerr << "Invalid multiple count at row " << row_index << '\n';
+				return 1;
+			}
+
+			vector<int> indices(count);
+
+			for (int &index : indices)
+			{
+				if (!(row >> index) || index < 0)
+				{
+					cerr << "Missing or invalid mapping index at row " << row_index << '\n';
+					return 1;
+				}
+
+				// TODO: Analyze this mapping index for the read at row_index.
+			}
+
+			maxm = max(maxm, static_cast<size_t>(count));
+		}
+		else
+		{
+			cerr << "Unknown label at row " << row_index << ": " << label << '\n';
+			return 1;
+		}
+
+		string extra;
+		if (row >> extra)
+		{
+			cerr << "Unexpected extra field at row " << row_index << ": " << extra << '\n';
+			return 1;
+		}
 	}
 
-	if (input.bad() || !input.eof())
+	if (input.bad())
 	{
 		cerr << "Could not read mapping output: " << input_path << '\n';
 		return 1;
 	}
 
 	cout << "Max multiple: " << maxm << endl;
+	return 0;
 }
