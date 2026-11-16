@@ -1,4 +1,5 @@
 #include <atomic>
+#include <chrono>
 #include <exception>
 #include <omp.h>
 #include <source_location>
@@ -13,15 +14,23 @@ int main(int argc, char *argv[])
 	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
 	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_2";
 
+	using steady_clock = chrono::steady_clock;
+
+	steady_clock::time_point total_start = steady_clock::now();;
+
 	try
 	{
+		const auto preprocessing_start = steady_clock::now();
 		GenomeMapper mapper(read_genome(genome_path));
+		const auto preprocessing_time = steady_clock::now() - preprocessing_start;
 
-		cout << "Preprocessing done" << endl;
+		cout << "Preprocessing done in " << chrono::duration<double>(preprocessing_time).count() << " seconds" << endl;
 
+		const auto indexing_start = steady_clock::now();
 		ReadsParser parser(reads_path, 22'720'100);
+		const auto indexing_time = steady_clock::now() - indexing_start;
 
-		cout << "Indexing done" << endl;
+		cout << "Indexing done in " << chrono::duration<double>(indexing_time).count() << " seconds" << endl;
 
 		constexpr int thread_count = 8;
 		constexpr size_t batch_size = 1024;
@@ -128,7 +137,15 @@ int main(int argc, char *argv[])
 	catch (const exception &error)
 	{
 		cerr << "Caught std::exception:\n" << error.what() << '\n';
+
+		const auto total_time = steady_clock::now() - total_start;
+		cout << "Program finished in " << chrono::duration<double>(total_time).count() << " seconds" << endl;
+
 		return 1;
 	}
+
+	const auto total_time = steady_clock::now() - total_start;
+	cout << "Program finished in " << chrono::duration<double>(total_time).count() << " seconds" << endl;
+
 	return 0;
 }
