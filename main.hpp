@@ -85,6 +85,29 @@ public:
 	{
 		out_indices.clear();
 
+		int k = read.size();
+		int genome_length = (int)bwt.size() - 1;
+		if (k > genome_length)
+			return;
+
+		int lw = 0;
+		while (lw < k && read[lw] == 'N')
+			lw++;
+
+		if (lw == k) [[unlikely]]
+		{
+			for (int pos = 0; pos <= genome_length - k; ++pos)
+				out_indices.push_back(pos);
+
+			return;
+		}
+
+		int rw = 0;
+		while (read[k - rw - 1] == 'N')
+			rw++;
+
+		read = read.substr(lw, k - lw - rw);
+
 		// [first, second)
 		auto extend = [this](pair<int, int> range, char c) -> pair<int, int>
 		{
@@ -149,7 +172,12 @@ public:
 		// int pos = inverse_map[range.first];
 		for (auto& range : curr)
 			for (int i = range.first; i < range.second; ++i)
-				out_indices.push_back(inverse_map[i]);
+			{
+				int fin = inverse_map[i];
+
+				if (fin >= lw && fin - lw <= genome_length - k)
+					out_indices.push_back(fin - lw);
+			}
 	}
 
 private:
