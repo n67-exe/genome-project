@@ -12,7 +12,7 @@ using namespace std;
 int main(int argc, char *argv[])
 {
 	const filesystem::path current = source_location::current().file_name();
-	const filesystem::path input_path = current.parent_path() / "data" / "wildcards_all_2.txt";
+	const filesystem::path input_path = current.parent_path() / "data" / "wildcards_all_3.txt";
 
 	ifstream input(input_path);
 
@@ -26,6 +26,8 @@ int main(int argc, char *argv[])
 	size_t maxm = 0;
 
 	string line, label;
+
+		size_t unmapp = 0, mapp = 0, mult = 0;
 
 	while (getline(input, line))
 	{
@@ -55,7 +57,7 @@ int main(int argc, char *argv[])
 
 		if (label == "missing")
 		{
-			// TODO: Analyze the read at row_index, which has no mapping.
+			unmapp++;
 		}
 		else if (label == "single")
 		{
@@ -65,6 +67,8 @@ int main(int argc, char *argv[])
 				cerr << "Invalid single record at row " << row_index << '\n';
 				return 1;
 			}
+
+			mapp++;
 
 			// TODO: Analyze the read at row_index mapped to index.
 		}
@@ -90,7 +94,7 @@ int main(int argc, char *argv[])
 				// TODO: Analyze this mapping index for the read at row_index.
 			}
 
-			maxm = max(maxm, static_cast<size_t>(count));
+			mult++;
 		}
 		else
 		{
@@ -112,6 +116,6 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	cout << "Max multiple: " << maxm << endl;
+	cout << unmapp << ' ' << mapp << ' ' << mult << endl;
 	return 0;
 }
