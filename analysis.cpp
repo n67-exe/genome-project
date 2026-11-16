@@ -4,28 +4,33 @@
 #include <source_location>
 #include <string>
 
+using namespace std;
+
 int main(int argc, char *argv[])
 {
 	if (argc > 2)
 	{
-		std::cerr << "Usage: analysis [mapping-output]\n";
+		cerr << "Usage: analysis [mapping-output]\n";
 		return 1;
 	}
 
-	const std::filesystem::path source = std::source_location::current().file_name();
-	const std::filesystem::path input_path = argc == 2
-		? std::filesystem::path(argv[1])
+	const filesystem::path source = source_location::current().file_name();
+	const filesystem::path input_path = argc == 2
+		? filesystem::path(argv[1])
 		: source.parent_path() / "data" / "exact_1.txt";
 
-	std::ifstream input(input_path);
+	ifstream input(input_path);
 	if (!input)
 	{
-		std::cerr << "Could not open mapping output: " << input_path << '\n';
+		cerr << "Could not open mapping output: " << input_path << '\n';
 		return 1;
 	}
 
-	std::string label;
-	std::size_t record = 0;
+	string label;
+	size_t record = 0;
+
+	int maxm = 0;
+
 	while (input >> label)
 	{
 		++record;
@@ -43,7 +48,7 @@ int main(int argc, char *argv[])
 			int position;
 			if (!(input >> position))
 			{
-				std::cerr << "Invalid single record at record " << record << '\n';
+				cerr << "Invalid single record at record " << record << '\n';
 				return 1;
 			}
 
@@ -54,24 +59,26 @@ int main(int argc, char *argv[])
 			int count, position;
 			if (!(input >> count >> position))
 			{
-				std::cerr << "Invalid multiple record at record " << record << '\n';
+				cerr << "Invalid multiple record at record " << record << '\n';
 				return 1;
 			}
 
 			// TODO: Analyze reads mapped multiple times, using count and position.
+
+			maxm = max(maxm, count);
 		}
 		else
 		{
-			std::cerr << "Unknown label at record " << record << ": " << label << '\n';
+			cerr << "Unknown label at record " << record << ": " << label << '\n';
 			return 1;
 		}
 	}
 
 	if (input.bad() || !input.eof())
 	{
-		std::cerr << "Could not read mapping output: " << input_path << '\n';
+		cerr << "Could not read mapping output: " << input_path << '\n';
 		return 1;
 	}
 
-	return 0;
+	cout << "Max multiple: " << maxm << endl;
 }

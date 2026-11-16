@@ -81,11 +81,12 @@ public:
 	GenomeMapper(GenomeMapper &&) = default;
 	GenomeMapper &operator=(GenomeMapper &&) = default;
 
-	[[nodiscard]]
-	MappedRead map_read(string_view read) const
+	void map_read(string_view read, vector<int>& out_indices) const
 	{
+		out_indices.clear();
+
 		if (read.contains('N'))
-			return MappedRead(0);
+			return;
 
 		// [first, second)
 		auto extend = [this](pair<int, int>& range, char c)
@@ -101,12 +102,15 @@ public:
 			extend(range, read[j]);
 
 			if (range.first >= range.second)
-				return MappedRead(0);
+				return;
 		}
 
-		int pos = inverse_map[range.first];
+		// int pos = inverse_map[range.first];
 
-		return MappedRead(range.second - range.first, pos);
+		for (int i = range.first; i < range.second; ++i)
+		{
+			out_indices.push_back(inverse_map[i]);
+		}
 	}
 
 private:
