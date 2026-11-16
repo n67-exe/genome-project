@@ -271,8 +271,6 @@ public:
 		return positions_.size();
 	}
 
-	// first_read is a zero-based read number, not a byte offset. The file
-	// must not be modified after the index has been built.
 	void get_reads(vector<string>& out_reads, size_t offset = 0)
 	{
 		if (offset >= positions_.size() || out_reads.size() == 0)

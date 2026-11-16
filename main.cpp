@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 
 	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
 	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
-	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_2";
+	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_3";
 
 	using steady_clock = chrono::steady_clock;
 
@@ -34,7 +34,7 @@ int main(int argc, char *argv[])
 
 		constexpr int thread_count = 8;
 		constexpr size_t batch_size = 1024;
-		constexpr size_t report_interval = batch_size * 500;
+		constexpr size_t report_interval = batch_size * 256;
 
 		const size_t read_count = parser.count_reads();
 
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
 
 			#pragma omp barrier
 
-			#pragma omp for schedule(dynamic, 1)
+			#pragma omp for schedule(dynamic, 8)
 			for (size_t offset = 0; offset < read_count; offset += batch_size)
 			{
 				if (failed.load())
