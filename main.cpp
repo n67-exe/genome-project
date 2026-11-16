@@ -8,29 +8,55 @@ int main(int argc, char *argv[])
 
 	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
 	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
+	const filesystem::path output_path = current.parent_path() / "data" / "exact_1.txt";
 
-	try {
+	try
+	{
+		ofstream out(output_path);
+
+		GenomeMapper mapper(read_genome(genome_path));
+
+		cout << "Preprocessing done" << endl;
+
+		vector<string> reads(1024);
+
 		ReadsParser parser(reads_path, 22'720'100);
-		cout << parser.count_reads() << endl;
 
-		vector<string> reads(15);
+		cout << "Indexing done" << endl;
 
-		parser.get_reads(reads);
+		cout << string((parser.count_reads() - 1) / (1024 * 500) + 1, '_') << endl;
 
-		for (auto& read : reads)
+		size_t count = 0, cmin = 999, cmax = 0;
+		size_t with = 0, without = 0;
+
+		for (size_t offset = 0; reads.size(); offset += reads.size())
 		{
-			cout << read << endl;
+			if (offset % (1024 * 500) == 0)
+				cout << '#' << flush;
+
+			parser.get_reads(reads, offset);
+
+			for (auto &read : reads)
+			{
+				if (read.contains('N'))
+				{
+					out << "skipped\n";
+					continue;
+				}
+
+				auto mapped = mapper.map_read(read);
+
+				if (mapped.count == 0)
+					out << "missing\n";
+				else if (mapped.count == 1)
+					out << "single " << mapped.position << "\n";
+				else
+					out << "multiple " << mapped.count << " " << mapped.position << "\n";
+			}
 		}
-		// string genome = read_genome(genome_path);
-		// const size_t genome_size = genome.size();
-		// GenomeMapper mapper;
-		// mapper.preprocess_genome(genome);
-		// const auto reads = parser.read_reads(0, 10);
-		//
-		// cout << "Loaded " << genome_size << " genome bases and "
-		//           << reads.size() << " reads.\n";
-		// Call mapper.map_read(reads[i]) once mapping is implemented.
-	} catch (const exception &error) {
+	}
+	catch (const exception &error)
+	{
 		cerr << "Caught std::exception:\n" << error.what() << '\n';
 		return 1;
 	}

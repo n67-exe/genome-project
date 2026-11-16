@@ -3,4 +3,6 @@ project(Genome_Project)
 
 set(CMAKE_CXX_STANDARD 23)
 
-add_executable(Genome_Project main.cpp)
+add_executable(stat stat.cpp)
+add_executable(main main.cpp)
+add_executable(analysis analysis.cpp)

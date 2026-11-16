@@ -21,7 +21,8 @@ struct MappedRead
 	int position = 0;
 };
 
-class GenomeMapper {
+class GenomeMapper
+{
 public:
 	explicit GenomeMapper(string genome)
 		: bwt(genome.size() + 1, 0), inverse_map(genome.size() + 1)
@@ -83,12 +84,12 @@ public:
 	[[nodiscard]]
 	MappedRead map_read(string_view read) const
 	{
+		if (read.contains('N'))
+			return MappedRead(0);
+
 		// [first, second)
 		auto extend = [this](pair<int, int>& range, char c)
 		{
-			if (c == 'N')
-				return;
-
 			range.first = smaller[id(c)] + occurrences[id(c)][range.first];
 			range.second = smaller[id(c)] + occurrences[id(c)][range.second];
 		};
@@ -137,29 +138,31 @@ inline string read_genome(const filesystem::path &path)
 {
 	ifstream input(path);
 
-	if (!input) {
+	if (!input)
 		throw runtime_error("Could not open genome file: " + path.string());
-	}
 
 	// This file has one FASTA record: a header followed by sequence lines.
 	// Multiple records and malformed input are not handled here.
 	string line;
+
 	getline(input, line); // Skip the header.
 
 	string genome;
-	while (getline(input, line)) {
-		if (!line.empty() && line.back() == '\r') {
+
+	while (getline(input, line))
+	{
+		if (!line.empty() && line.back() == '\r')
 			line.pop_back();
-		}
+
 		genome += line;
 	}
+
 	return genome;
 }
 
-class ReadsParser {
+class ReadsParser
+{
 public:
-	// Building the index scans the file once. The optional count is only a
-	// capacity hint; the actual count is determined from the file.
 	explicit ReadsParser(const filesystem::path &path, size_t expected_reads = 0)
 		: file_(path), input_(path, ios::binary)
 	{
@@ -201,7 +204,8 @@ public:
 	// must not be modified after the index has been built.
 	void get_reads(vector<string>& out_reads, size_t offset = 0)
 	{
-		if (offset >= positions_.size() || out_reads.size() == 0) {
+		if (offset >= positions_.size() || out_reads.size() == 0)
+		{
 			return out_reads.clear();
 		}
 
@@ -217,7 +221,8 @@ public:
 		// Adjacent reads can be read sequentially
 		string ignored, sequence;
 		string& header = ignored, separator = ignored, quality = ignored;
-		for (auto& e : out_reads) {
+		for (auto& e : out_reads)
+		{
 			if (!getline(input_, header) || !getline(input_, sequence)
 				|| !getline(input_, separator) || !getline(input_, quality))
 				throw runtime_error("Could not read FASTQ record");
@@ -232,58 +237,69 @@ public:
 private:
 	void build_index()
 	{
-		// The supplied FASTQ has four unwrapped lines per record. We count
-		// newlines in binary mode so offsets are correct for LF and CRLF.
-		// Headers, separators and qualities are not otherwise validated.
 		vector<char> buffer(64 * 1024);
+
 		streamoff chunk_offset = 0;
 		streamoff record_start = 0;
+
 		int lines_in_record = 0;
 		bool has_data = false;
 		char last_byte = '\0';
 
-		for (;;) {
+		while (true)
+		{
 			input_.read(buffer.data(), static_cast<streamsize>(buffer.size()));
+
 			const streamsize bytes = input_.gcount();
-			if (bytes > 0) {
+
+			if (bytes > 0)
+			{
 				has_data = true;
 				last_byte = buffer[static_cast<size_t>(bytes) - 1];
+
 				const char *cursor = buffer.data();
 				const char *end = cursor + bytes;
-				while (cursor < end) {
-					const auto *newline = static_cast<const char *>(
-						memchr(cursor, '\n', static_cast<size_t>(end - cursor)));
-					if (!newline) {
+
+				while (cursor < end)
+				{
+					const auto *newline = static_cast<const char *>(memchr(cursor, '\n', static_cast<size_t>(end - cursor)));
+
+					if (!newline)
 						break;
-					}
-					if (++lines_in_record == 4) {
+
+					if (++lines_in_record == 4)
+					{
 						positions_.push_back(record_start);
+
 						record_start = chunk_offset + (newline - buffer.data()) + 1;
 						lines_in_record = 0;
 					}
+
 					cursor = newline + 1;
 				}
+
 				chunk_offset += bytes;
 			}
-			if (input_.bad()) {
+
+			if (input_.bad())
 				throw runtime_error("Could not read FASTQ file while indexing");
-			}
-			if (input_.eof()) {
+
+			if (input_.eof())
 				break;
-			}
-			if (!input_) {
+
+			if (!input_)
 				throw runtime_error("Could not read FASTQ file while indexing");
-			}
 		}
 
-		// The last quality line may end at EOF without a newline.
-		if (has_data && last_byte != '\n' && ++lines_in_record == 4) {
+		// The last quality line may end at EOF without a newline
+		if (has_data && last_byte != '\n' && ++lines_in_record == 4)
+		{
 			positions_.push_back(record_start);
 			lines_in_record = 0;
 		}
-		if (lines_in_record != 0) {
+
+		if (lines_in_record != 0)
 			throw runtime_error("Incomplete FASTQ record");
-		}
 	}
 
 	filesystem::path file_;
