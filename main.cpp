@@ -12,7 +12,7 @@ int main(int argc, char *argv[])
 
 	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
 	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
-	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_3";
+	const filesystem::path output_path = current.parent_path() / "data" / "wildcards_all_4";
 
 	using steady_clock = chrono::steady_clock;
 
@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
 
 	try
 	{
+		// cout << "Genome length: " << read_genome(genome_path).length() << endl;
+
 		const auto preprocessing_start = steady_clock::now();
 		GenomeMapper mapper(read_genome(genome_path));
 		const auto preprocessing_time = steady_clock::now() - preprocessing_start;
@@ -42,14 +44,17 @@ int main(int argc, char *argv[])
 
 		filesystem::create_directories(output_path);
 
+		vector<bool> coverage(read_genome(genome_path).length(), false);
+
 		atomic<bool> failed = false;
 		exception_ptr failure;
 		omp_set_dynamic(0);
 
-		#pragma omp parallel num_threads(thread_count) firstprivate(mapper, parser, read_count) shared(cout, output_path, failed, failure) default(none)
+		#pragma omp parallel num_threads(thread_count) firstprivate(mapper, parser, read_count) shared(cout, output_path, coverage, failed, failure) default(none)
 		{
 			vector<string> reads;
 			vector<int> indices;
+			vector<bool> cov;
 
 			ofstream out;
 
@@ -57,6 +62,7 @@ int main(int argc, char *argv[])
 			{
 				reads.resize(batch_size);
 				indices.reserve(32);
+				cov.resize(coverage.size());
 
 				const filesystem::path path = output_path / (to_string(omp_get_thread_num()) + ".txt");
 
@@ -105,7 +111,11 @@ int main(int argc, char *argv[])
 						if (indices.empty())
 							out << "missing\n";
 						else if (indices.size() == 1)
+						{
 							out << "single " << indices.front() << '\n';
+							for (int j = 0; j < reads[i].size(); ++j)
+								cov[indices.front() + j] = true;
+						}
 						else
 						{
 							out << "multiple " << indices.size();
@@ -127,12 +137,17 @@ int main(int argc, char *argv[])
 					failed.store(true);
 				}
 			}
+
+			for (int i = 0; i < coverage.size(); ++i)
+				if (cov[i]) coverage[i] = true;
 		}
 
 		if (failure)
 			rethrow_exception(failure);
 
 		cout << endl;
+
+		cout << "Coverage: " << ranges::count(coverage, true) << endl;
 	}
 	catch (const exception &error)
 	{
