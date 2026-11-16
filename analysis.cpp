@@ -7,12 +7,19 @@
 #include <string>
 #include <vector>
 
+#include "main.hpp"
+
 using namespace std;
+
+using boolean = unsigned char;
 
 int main(int argc, char *argv[])
 {
 	const filesystem::path current = source_location::current().file_name();
-	const filesystem::path input_path = current.parent_path() / "data" / "wildcards_all_3.txt";
+
+	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
+	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
+	const filesystem::path input_path = current.parent_path() / "data" / "exact_all_1.txt";
 
 	ifstream input(input_path);
 
@@ -22,19 +29,25 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	ReadsParser parser(reads_path);
+
+	cout << "Indexing done" << endl;
+
 	size_t line_number = 0;
-	size_t maxm = 0;
 
 	string line, label;
 
-		size_t unmapp = 0, mapp = 0, mult = 0;
+	size_t skipd = 0, unmapp = 0, mapp = 0, mult = 0;
+	vector<boolean> coverage(read_genome(genome_path).length(), false);
+
+	vector<string> reads(1);
 
 	while (getline(input, line))
 	{
 		++line_number;
 		istringstream row(line);
 
-		long long row_index;
+		long long row_index = line_number - 1;
 		int ambiguity;
 
 		if (!(row >> row_index) || row_index < 0)
@@ -55,7 +68,11 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 
-		if (label == "missing")
+		if (label == "skipped")
+		{
+			skipd++;
+		}
+		else if (label == "missing")
 		{
 			unmapp++;
 		}
@@ -69,6 +86,11 @@ int main(int argc, char *argv[])
 			}
 
 			mapp++;
+
+			parser.get_reads(reads, index);
+
+			for (int j = 0; j < reads.front().size(); ++j)
+				coverage[index + j] = true;
 
 			// TODO: Analyze the read at row_index mapped to index.
 		}
@@ -116,6 +138,9 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	cout << unmapp << ' ' << mapp << ' ' << mult << endl;
+	cout << skipd << ' ' << unmapp << ' ' << mapp << ' ' << mult << endl;
+
+	cout << "Coverage: " << ranges::count(coverage, true) << endl;
+
 	return 0;
 }

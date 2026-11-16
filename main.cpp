@@ -44,17 +44,14 @@ int main(int argc, char *argv[])
 
 		filesystem::create_directories(output_path);
 
-		vector<bool> coverage(read_genome(genome_path).length(), false);
-
 		atomic<bool> failed = false;
 		exception_ptr failure;
 		omp_set_dynamic(0);
 
-		#pragma omp parallel num_threads(thread_count) firstprivate(mapper, parser, read_count) shared(cout, output_path, coverage, failed, failure) default(none)
+		#pragma omp parallel num_threads(thread_count) firstprivate(mapper, parser, read_count) shared(cout, output_path, failed, failure) default(none)
 		{
 			vector<string> reads;
 			vector<int> indices;
-			vector<bool> cov;
 
 			ofstream out;
 
@@ -62,7 +59,6 @@ int main(int argc, char *argv[])
 			{
 				reads.resize(batch_size);
 				indices.reserve(32);
-				cov.resize(coverage.size());
 
 				const filesystem::path path = output_path / (to_string(omp_get_thread_num()) + ".txt");
 
@@ -113,8 +109,6 @@ int main(int argc, char *argv[])
 						else if (indices.size() == 1)
 						{
 							out << "single " << indices.front() << '\n';
-							for (int j = 0; j < reads[i].size(); ++j)
-								cov[indices.front() + j] = true;
 						}
 						else
 						{
@@ -137,17 +131,12 @@ int main(int argc, char *argv[])
 					failed.store(true);
 				}
 			}
-
-			for (int i = 0; i < coverage.size(); ++i)
-				if (cov[i]) coverage[i] = true;
 		}
 
 		if (failure)
 			rethrow_exception(failure);
 
 		cout << endl;
-
-		cout << "Coverage: " << ranges::count(coverage, true) << endl;
 	}
 	catch (const exception &error)
 	{
