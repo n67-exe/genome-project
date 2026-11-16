@@ -32,7 +32,7 @@ int main(int argc, char *argv[])
 
 		cout << "Indexing done in " << chrono::duration<double>(indexing_time).count() << " seconds" << endl;
 
-		constexpr int thread_count = 8;
+		constexpr int thread_count = 10;
 		constexpr size_t batch_size = 1024;
 		constexpr size_t report_interval = batch_size * 256;
 
@@ -100,7 +100,7 @@ int main(int argc, char *argv[])
 						mapper.map_read(reads[i], indices);
 
 						// Use read numbers to reconstruct the original output order
-						out << offset + i << ' ';
+						out << offset + i << ' ' << count(reads[i].begin(), reads[i].end(), 'N') << ' ';
 
 						if (indices.empty())
 							out << "missing\n";
