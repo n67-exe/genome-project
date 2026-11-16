@@ -7,6 +7,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include <source_location>
 
 using namespace std;
 
@@ -66,6 +67,26 @@ string read_genome(const filesystem::path &path)
 	return genome;
 }
 
+size_t count_reads(const filesystem::path &path)
+{
+	ifstream input(path);
+	if (!input) {
+		throw runtime_error("Could not open reads file: " + path.string());
+	}
+
+	// Assumes the supplied FASTQ format: four unwrapped lines per read.
+	// Counting requires a complete pass through the file.
+	size_t line_count = 0;
+	string line;
+	while (getline(input, line)) {
+		++line_count;
+	}
+	if (input.bad()) {
+		throw runtime_error("Could not read reads file: " + path.string());
+	}
+	return line_count / 4;
+}
+
 vector<string> read_reads(const filesystem::path &path,
                                     size_t max_reads)
 {
@@ -95,17 +116,21 @@ vector<string> read_reads(const filesystem::path &path,
 
 int main(int argc, char *argv[])
 {
-	const filesystem::path genome_path = "data/GCF_000005845.2_ASM584v2_genomic.fna";
-	const filesystem::path reads_path = "data/ERR022075_1.fastq";
+	const filesystem::path current = source_location::current().file_name();
+
+	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
+	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
 
 	try {
-		string genome = read_genome(genome_path);
-		const size_t genome_size = genome.size();
-		GenomeMapper mapper(move(genome));
-		const auto reads = read_reads(reads_path, 10);
-
-		cout << "Loaded " << genome_size << " genome bases and "
-		          << reads.size() << " reads.\n";
+		cout << count_reads(reads_path) << endl;
+		// string genome = read_genome(genome_path);
+		// const size_t genome_size = genome.size();
+		// GenomeMapper mapper;
+		// mapper.preprocess_genome(genome);
+		// const auto reads = read_reads(reads_path, 10);
+		//
+		// cout << "Loaded " << genome_size << " genome bases and "
+		//           << reads.size() << " reads.\n";
 		// Call mapper.map_read(reads[i]) once mapping is implemented.
 	} catch (const exception &error) {
 		cerr << "Caught std::exception:\n" << error.what() << '\n';
