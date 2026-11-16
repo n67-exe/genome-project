@@ -19,7 +19,7 @@ int main(int argc, char *argv[])
 
 	const filesystem::path genome_path = current.parent_path() / "data" / "GCF_000005845.2_ASM584v2_genomic.fna";
 	const filesystem::path reads_path = current.parent_path() / "data" / "ERR022075_1.fastq";
-	const filesystem::path input_path = current.parent_path() / "data" / "exact_all_1.txt";
+	const filesystem::path input_path = current.parent_path() / "data" / "exact_all_2.txt";
 
 	ifstream input(input_path);
 
@@ -50,7 +50,7 @@ int main(int argc, char *argv[])
 		long long row_index = line_number - 1;
 		int ambiguity;
 
-		if (!(row >> row_index) || row_index < 0)
+		if (!(row >> row_index) || row_index < 0 || row_index != line_number - 1)
 		{
 			cerr << "Invalid row index at line " << line_number << '\n';
 			return 1;
