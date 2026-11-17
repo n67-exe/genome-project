@@ -32,4 +32,5 @@ Stats for approximate matches that are 1 Hamming distance away taking `N` as wil
 - `4570806/4641652` (98.5%) coverage
 - `~10000s` analysis time (10 threads)
 
-Output files with all the calculated mappings are not included here due to size constraints (~500MB each)
+Output files with all the calculated mappings are not included in the repository due to their size (~500MB each).
+There are available to download [here](https://drive.google.com/file/d/10gbDECNni9Ntq2Iw3r4ossx_vCtKV4tt/view).
